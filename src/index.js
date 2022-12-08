@@ -6,37 +6,14 @@ import Text from './Text'
 import Effects from './Effects'
 import Sparks from './Sparks'
 import Particles from './Particles'
+import { Controls, useControl, withControls } from 'react-three-gui';
 import './styles.css'
 
-function Ellipse(props) {
-  const geometry = useMemo(() => {
-    const curve = new THREE.EllipseCurve(0, 0, 10, 3, 0, 2 * Math.PI, false, 0)
-    const points = curve.getPoints(50)
-    return new THREE.BufferGeometry().setFromPoints(points)
-  }, [])
-  return (
-    <line geometry={geometry} {...props}>
-      <meshBasicMaterial />
-    </line>
-  )
-}
+const MyCanvas = withControls(Canvas);
 
-function ReactAtom(props) {
-  return (
-    <group {...props}>
-      <Ellipse />
-      <Ellipse rotation={[0, 0, Math.PI / 3]} />
-      <Ellipse rotation={[0, 0, -Math.PI / 3]} />
-      <mesh>
-        <sphereGeometry args={[0.5, 32, 32]} />
-        <meshBasicMaterial color="red" />
-      </mesh>
-    </group>
-  )
-}
-
-function Number({ hover }) {
+function Number({ hover, mouse }) {
   const ref = useRef()
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
   useFrame((state) => {
     if (ref.current) {
       ref.current.position.x = THREE.MathUtils.lerp(ref.current.position.x, state.mouse.x * 2, 0.1)
@@ -44,18 +21,24 @@ function Number({ hover }) {
       ref.current.rotation.y = 0.8
     }
   })
+  const isParticleOn = useControl('particle', { type: 'boolean', value: false })
+  const isSparkOn = useControl('spark', { type: 'boolean', value: false })
   return (
     <Suspense fallback={null}>
       <group ref={ref}>
         <Text
           size={10}
-          onClick={(e) => window.open('https://github.com/react-spring/react-three-fiber/blob/master/whatsnew.md', '_blank')}
           onPointerOver={() => hover(true)}
           onPointerOut={() => hover(false)}>
           4
         </Text>
-        <ReactAtom position={[35, -20, 0]} scale={[1, 0.5, 1]} />
       </group>
+      {isParticleOn ?
+        <Particles count={isMobile ? 5000 : 10000} mouse={mouse} />
+      : null}
+      {isSparkOn ?
+        <Sparks count={20} mouse={mouse} colors={['#A2CCB6', '#FCEEB5', '#EE786E', '#e0feff', 'lightpink', 'lightblue']} />
+      : null}
     </Suspense>
   )
 }
@@ -72,21 +55,33 @@ function App() {
   }, [hovered])
 
   return (
-    <Canvas
-      linear
-      dpr={[1, 2]}
-      camera={{ fov: 100, position: [0, 0, 30] }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.Uncharted2ToneMapping
-        gl.setClearColor(new THREE.Color('#020207'))
-      }}>
-      <fog attach="fog" args={['white', 50, 190]} />
-      <pointLight distance={100} intensity={4} color="white" />
-      <Number mouse={mouse} hover={hover} />
-      <Particles count={isMobile ? 5000 : 10000} mouse={mouse} />
-      <Sparks count={20} mouse={mouse} colors={['#A2CCB6', '#FCEEB5', '#EE786E', '#e0feff', 'lightpink', 'lightblue']} />
-      <Effects />
-    </Canvas>
+    <Controls.Provider>
+      <div
+        style={{
+          width: "100vw",
+          height: "100vh"
+        }}
+        onClick={() => setIsClicked(true)}
+      >
+        <MyCanvas
+          linear
+          dpr={[1, 2]}
+          camera={{ fov: 100, position: [0, 0, 30] }}
+          onCreated={({ gl }) => {
+            // gl.toneMapping = THREE.Uncharted2ToneMapping
+            gl.setClearColor(new THREE.Color('#020207'))
+          }}>
+          <fog attach="fog" args={['white', 50, 190]} />
+          <pointLight distance={100} intensity={4} color="white" />
+          <Number mouse={mouse} hover={hover} />
+          <Effects />
+        </MyCanvas>
+      </div>
+      <Controls
+        title="시각 효과 토글"
+        width={300}
+      />
+    </Controls.Provider>
   )
 }
 
